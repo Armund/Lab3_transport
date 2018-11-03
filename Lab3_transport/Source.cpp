@@ -31,6 +31,12 @@ int min(int q, int w)
 	return (q < w ? q : w);
 }
 
+// максимальный элемент из двух - вспомогательная функция
+int max(int q, int w)
+{
+	return (q > w ? q : w);
+}
+
 // вывод матрицы (1 - вывод тарифов; 2 - вывод values)
 void vivod(vector<vector<element>>& M, int mode) 
 {
@@ -50,10 +56,9 @@ void vivod(vector<vector<element>>& M, int mode)
 		for (int i = 0; i < a; i++)
 		{
 			for (int j = 0; j < b; j++)
-				cout << M[i][j].val << " ";
+				cout << "\t" << M[i][j].val << " ";
 			cout << endl;
 		}
-		cout << endl << endl;
 		break;
 	}
 	return;
@@ -139,10 +144,12 @@ void fill_UV(vector<vector<element>> M, vector<int> &V, vector<int> &U, int k, i
 				if (M[i][j].val != 0) {
 					if (V[i] == putin && U[j] == putin) {
 						proverka = 1;
+						cout << "U NAS NEROZHDENNIY!!!" << endl;
 						if (proverka2 == false) {
 							V[i] = M[i][j].price / 2;
 							U[j] = M[i][j].price - V[i];
 							proverka2 = 1;
+
 						}
 					}
 					if (V[i] != putin) {
@@ -181,16 +188,33 @@ void fill_extra(vector<vector<element>> &M, vector<int> &V, vector<int> &U) {
 // найден ли оптимальный план?
 bool is_perfect(vector<vector<element>> M)
 {
-	for (int i = 0; i < a; i++) {
+	//for (int i = 0; i < a; i++) {
+	//	for (int j = 0; j < b; j++)
+	//	{
+	//		if (M[i][j].extra > M[i][j].price)
+	//		{
+	//			cout << M[i][j].extra << " " << M[i][j].price;
+	//			return false;
+	//		}
+	//	}
+	//}
+	//return true;
+	int maxVal = 0;
+	for (int i = 0; i < a; i++)
+	{
 		for (int j = 0; j < b; j++)
 		{
-			if (M[i][j].extra > M[i][j].price)
+			if (M[i][j].val == 0)
 			{
-				return false;
+				if (M[i][j].extra - M[i][j].price > maxVal)
+				{
+					maxVal = M[i][j].extra - M[i][j].price;
+				}
 			}
 		}
 	}
-	return true;
+	return maxVal <= 0;
+
 }
 
 // подсчёт текущей стоимости перевозок
@@ -258,6 +282,112 @@ void clear_UVE(vector<vector<element>> &M, vector<int> &V, vector<int> &U)
 	}
 }
 
+struct point
+{
+	int a;
+	int b;
+
+	point(int q, int w)
+	{
+		a = q;
+		b = w;
+	}
+};
+
+point potentialPoint(vector<vector<element>> M)
+{
+	point potential_point(0, 0);
+	int maxVal = 0;
+	for (int i = 0; i < a; i++)
+	{
+		for (int j = 0; j < b; j++)
+		{
+			if (M[i][j].val == 0)
+			{
+				if (M[i][j].extra - M[i][j].price > maxVal)
+				{
+					maxVal = M[i][j].extra - M[i][j].price;
+					potential_point.a = i;
+					potential_point.b = j;
+				}
+			}
+		}
+	}
+	return potential_point;
+}
+
+bool look_vertically(vector<vector<element>>&, int, int, point, vector<point>&);
+bool look_horisontally(vector<vector<element>> &M, int line, int column, point startPoint, vector<point>& path)
+{	
+	for (int i = 0; i < b; i++)
+	{
+		if ((i != column) && (M[line][i].val > 0))
+		{
+			if (look_vertically(M, line, i, startPoint, path))
+			{
+				point p(line, i);
+				path.push_back(p);
+				//cout << line << " " << i << endl;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+bool look_vertically(vector<vector<element>> &M, int line, int column, point startPoint, vector<point>& path)
+{
+	for (int i = 0; i < a; i++)
+	{
+		if ((i == startPoint.a) && (column == startPoint.b))
+		{
+			point p(i, column);
+			path.push_back(p);
+			return true;
+		}
+		if ((i != line) && (M[i][column].val > 0))
+		{
+			if (look_horisontally(M, i, column, startPoint, path))
+			{
+				point p(i, column);
+				path.push_back(p);
+				//cout << i << " " << column << endl;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+int minimal_value(vector<vector<element>> M, vector<point> path)
+{
+	int minVal = M[path[1].a][path[1].b].val;
+	for (int i = 3; i < path.size(); i += 2)
+	{
+		minVal = min(minVal, M[path[i].a][path[i].b].val);
+	}
+	return minVal;
+}
+
+void perfect_try2(vector<vector<element>> &M, point start, vector<point>& path)
+{
+	if (!look_horisontally(M, start.a, start.b, start, path))
+	{
+		cout << "some problem?" << endl;
+	}
+	else
+	{
+		int minVal = minimal_value(M, path);
+		for (int i = 0; i < path.size(); i += 2)
+		{
+			M[path[i].a][path[i].b].val += minVal;
+			M[path[i + 1].a][path[i + 1].b].val -= minVal;
+		}
+	}
+
+	return;
+}
+
 int main()
 {
 	in >> a >> b;
@@ -270,30 +400,33 @@ int main()
 	vector <int> U(b, putin);
 	vector <int> V(a, putin);
 
-
 	vivod(M, 1);
 	cout << "First plan:" << endl;
 	vivod(M, 2);
 
+	point first_point(6, 0);
+	vector <point> path;
 	int iter = 1;
 	do {
 		cout << "Iteration " << iter << endl;
+		clear_UVE(M, V, U);
+		path.clear();
 		find_max_from_not_empty(k, l, M);
 		fill_UV(M, V, U, k, l);
 		fill_extra(M, V, U);
-		perfect_try(M);
-		cout << endl << endl;
+		first_point = potentialPoint(M);
+		perfect_try2(M, first_point, path);
+		vivod(M, 2);
+		cout << count(M) << endl;
 		iter++;
-		clear_UVE(M, V, U);
-
-	} while (!is_perfect(M));
-
-	cout << "Best plan:" << endl;
+	} while (!is_perfect(M) && (iter < 10));
+	cout << "Iteration " << iter << endl;
 	vivod(M, 2);
-	cout << "Best total:" << endl;
-	cout << count(M) << endl;
+	cout << "Best total: " << count(M) << endl;
+
 
 	_getch();
 
 	return 0;
 }
+
